@@ -1,0 +1,165 @@
+* lists
+** [4,8,15,16,23,42]
+** [1..20]
+** [x*2 | x <- [1..10]] --> [2,4,6,8,10,12,14,16,18,20]
+** [(a,b) | a <- [0,1], b <- [2,3]] --> [(0,2), (0,3), (1,2), (1,3)]
+* tuples
+  they can have different types inside
+** ("Wow", False, 1)
+** empty tuple: ()
+* functions
+** doubleMe x = x + x
+** doubleSmallNumber' x = (if x > 100 then x else x*2) + 1
+** type declaration
+   addThree :: Int -> Int -> Int -> Int  
+   addThree x y z = x + y + z
+** pattern matching
+   factorial :: (Integral a) => a -> a  
+   factorial 0 = 1  
+   factorial n = n * factorial (n - 1)
+** guards
+    bmiTell :: (RealFloat a) => a -> a -> String  
+    bmiTell weight height  
+        | bmi <= 18.5 = "You're underweight, you emo, you!"  
+        | bmi <= 25.0 = "You're supposedly normal. Pffft, I bet you're ugly!"  
+        | bmi <= 30.0 = "You're fat! Lose some weight, fatty!"  
+        | otherwise   = "You're a whale, congratulations!"  
+        where bmi = weight / height ^ 2
+** let syntax
+   cylinder :: (RealFloat a) => a -> a -> a  
+   cylinder r h = 
+    let sideArea = 2 * pi * r * h  
+        topArea = pi * r ^2  
+    in  sideArea + 2 * topArea 
+** case expression
+   describeList :: [a] -> String  
+   describeList xs = "The list is " ++ case xs of [] -> "empty."  
+                                                  [x] -> "a singleton list."   
+                                                  xs -> "a longer list."
+* higher order functions
+** applyTwice
+   applyTwice :: (a -> a) -> a -> a  
+   applyTwice f x = f (f x)
+** map
+   map :: (a -> b) -> [a] -> [b]  
+   map _ [] = []  
+   map f (x:xs) = f x : map f xs
+** filter
+   filter :: (a -> Bool) -> [a] -> [a]  
+   filter _ [] = []  
+   filter p (x:xs)   
+    | p x       = x : filter p xs  
+    | otherwise = filter p xs 
+
+** lambdas
+   map (\(a,b) -> a + b) [(1,2),(3,5),(6,3),(2,6),(2,5)]  
+    --> [3,8,9,8,7] 
+** foldl
+   - takes a binary function, a starting value (accumulator) and a list
+   foldl (+) 0 [3,5,2,1]
+   --> 11
+** scanl
+   scanl (+) 0 [3,5,2,1]  
+   --> [0,3,8,10,11]
+** function application
+   ($) :: (a -> b) -> a -> b  
+   f $ x = f x
+** function composition
+   (.) :: (b -> c) -> (a -> b) -> a -> c  
+   f . g = \x -> f (g x)
+* data constructors
+** simple data declaration
+   data Person = Person Text Int
+** algebraic data type
+   data Bool = True | False
+   data Shape = Circle Float Float Float | Rectangle Float Float Float Float
+** record syntax
+   data Person = Person { firstName :: String  
+                         , lastName :: String  
+                         , age :: Int  
+                         , height :: Float  
+                         , phoneNumber :: String  
+                         , flavor :: String  
+                         } deriving (Show)   
+** newtype declaration
+   newtype Name = Name Text
+   - disappears at compile time
+** type declaration (type synonyms)
+   type GearCount = Int
+** type variables (type parameters)
+   data Maybe a = Just a | Nothing
+   'a' is a type variable
+* type classes
+** declaration
+   class Eq a where  
+     (==) :: a -> a -> Bool  
+     (/=) :: a -> a -> Bool  
+     x == y = not (x /= y)  
+     x /= y = not (x == y) 
+** make data type instance of typeclass
+   instance Eq TrafficLight where  
+     Red == Red = True  
+     Green == Green = True  
+     Yellow == Yellow = True  
+     _ == _ = False  
+** creating subclass
+   class (Eq a) => Num a where ...
+   - it means, that any data type that is instance of Num should be
+     instance of Eq first
+* Functor typeclass
+** declaration
+  class Functor f where  
+    fmap :: (a -> b) -> f a -> f b
+** instances
+*** []
+    instance Functor [] where  
+      fmap = map
+*** Maybe
+    instance Functor Maybe where  
+      fmap f (Just x) = Just (f x)  
+      fmap f Nothing = Nothing    
+*** Tree
+    instance Functor Tree where  
+      fmap f EmptyTree = EmptyTree  
+      fmap f (Node x leftsub rightsub) = Node (f x) (fmap f leftsub) (fmap f rightsub)
+*** Either
+    instance Functor (Either a) where  
+      fmap f (Right x) = Right (f x)  
+      fmap f (Left x) = Left x
+*** IO
+    instance Functor IO where  
+    fmap f action = do  
+        result <- action  
+        return (f result)
+** functor laws
+   1. fmap id = id
+   2. fmap (f . g) = fmap f . fmap g
+* Applicative typeclass
+** declaration
+   class (Functor f) => Applicative f where  
+    pure :: a -> f a  
+    (<*>) :: f (a -> b) -> f a -> f b
+** instances
+*** Maybe
+    instance Applicative Maybe where  
+      pure = Just  
+      Nothing <*> _ = Nothing  
+      (Just f) <*> something = fmap f something
+    - e.g. Just (+3) <*> Just 9 --> Just 12
+           pure (+) <*> Just 3 <*> Just 5 --> Just 8
+*** []
+    instance Applicative [] where  
+        pure x = [x]  
+        fs <*> xs = [f x | f <- fs, x <- xs]  
+    - e.g.
+      [(*0),(+100),(^2)] <*> [1,2,3] --> [0,0,0,101,102,103,1,4,9]
+*** IO
+    instance Applicative IO where  
+        pure = return  
+        a <*> b = do  
+            f <- a  
+            x <- b  
+            return (f x)  
+    - e.g.: myAction = (++) <$> getLine <*> getLine
+* Monad typeclass
+** declaration
